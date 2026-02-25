@@ -35,7 +35,6 @@
 2. **Install Dependencies**:
    ```bash
    pip install rich watchdog pystray Pillow tomli
-   Or use the setup_requirements.bat on Windows.
    ```
 
 3. **Run CABLE**:
