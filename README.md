@@ -30,20 +30,22 @@
 
 ## 🚀 Quick Start
 
-1. **Install Dependencies**:
+1. **Install Python, you dummy!**:
+   
+2. **Install Dependencies**:
    ```bash
    pip install rich watchdog pystray Pillow tomli
    ```
 
-2. **Run CABLE**:
+3. **Run CABLE**:
    ```bash
    python cable.py
    ```
 
-3. **Choose Your Source**:
+4. **Choose Your Source**:
    A native folder picker will appear. Select the directory you want to clean up.
 
-4. **Follow the Prompts**:
+5. **Follow the Prompts**:
    Pick your sorting mode, destination, and options. CABLE handles the rest.
 
 ---
