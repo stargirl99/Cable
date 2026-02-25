@@ -23,8 +23,6 @@ Even though there is a bit of information here I recommend taking a look at Cabl
 
 ---
 
----
-
 ## ⚡ Features
 
 - **Dual Modes**: Choose between a one-time **Sort Once** or a persistent **Watcher Daemon**.
