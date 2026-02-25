@@ -77,6 +77,6 @@ On first run, CABLE generates a `cable.json` file in the same directory. You can
 ---
 
 <div align="center">
-  <img src="lain_smile.png" width="120" alt="Lain Logo">
-  <p><small><i>Welcome to The Wired.</i></small></p>
+  <img src="lain_smile.png" width="120" alt="Why is this blue? :3">
+  <p><small><i>I love Cables so much...</i></small></p>
 </div>
