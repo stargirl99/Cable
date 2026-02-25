@@ -30,7 +30,7 @@
 
 ## 🚀 Quick Start
 
-1. **Install Python, you dummy!**:
+1. **Install Python, you dummy!**
    
 2. **Install Dependencies**:
    ```bash
