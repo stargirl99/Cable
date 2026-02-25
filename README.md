@@ -48,6 +48,9 @@
 5. **Follow the Prompts**:
    Pick your sorting mode, destination, and options. CABLE handles the rest.
 
+6. **Guide**:
+   If this .md is not enough check Cable.html, which is a better version of this. Hehe...
+
 ---
 
 ## ⚙️ Configuration
