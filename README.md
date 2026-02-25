@@ -17,6 +17,14 @@
 
 ---
 
+## 📖 Overview
+
+Even though there is a bit of information here I recommend taking a look at Cable.html which is a more detailed version of this README.
+
+---
+
+---
+
 ## ⚡ Features
 
 - **Dual Modes**: Choose between a one-time **Sort Once** or a persistent **Watcher Daemon**.
@@ -47,9 +55,6 @@
 
 5. **Follow the Prompts**:
    Pick your sorting mode, destination, and options. CABLE handles the rest.
-
-6. **Guide**:
-   If this .md is not enough check Cable.html, which is a better version of this. Hehe...
 
 ---
 
