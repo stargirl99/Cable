@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CABLE — Folder Sorter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;600&family=Rajdhani:wght@300;400;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --accent: #c084fc;
+      --accent2: #818cf8;
+      --accent3: #38bdf8;
+      --good: #34d399;
+      --warn: #fbbf24;
+      --bad: #f87171;
+      --bg: #030210;
+      --bg2: #06041a;
+      --bg3: #0a0720;
+      --border: #1e0d50;
+      --text: #e8e0ff;
+      --dim: #7060a8;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* CRT scanlines */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      background: repeating-linear-gradient(0deg,
+          rgba(0, 0, 0, .06) 0px, rgba(0, 0, 0, .06) 1px,
+          transparent 1px, transparent 3px);
+    }
+
+    /* Animated noise grain */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      pointer-events: none;
+      opacity: .025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    canvas#particles {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* BG glow blobs */
+    .gb {
+      position: fixed;
+      pointer-events: none;
+      z-index: 0;
+      border-radius: 50%;
+      filter: blur(100px);
+    }
+
+    .gb.a {
+      width: 700px;
+      height: 700px;
+      background: #4c1d95;
+      opacity: .06;
+      top: -200px;
+      left: -200px;
+    }
+
+    .gb.b {
+      width: 500px;
+      height: 500px;
+      background: #0c2a6e;
+      opacity: .07;
+      bottom: -100px;
+      right: -100px;
+    }
+
+    .gb.c {
+      width: 350px;
+      height: 350px;
+      background: #6d28d9;
+      opacity: .04;
+      top: 55%;
+      left: 45%;
+      transform: translate(-50%, -50%);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg2);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #3b1d82;
+      border-radius: 2px;
+    }
+
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 500;
+      background: rgba(3, 2, 16, .9);
+      backdrop-filter: blur(20px) saturate(1.5);
+      border-bottom: 1px solid rgba(192, 132, 252, .15);
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 0 28px;
+      height: 50px;
+    }
+
+    .nav-logo {
+      font-family: 'Orbitron', monospace;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 6px;
+      background: linear-gradient(90deg, #c084fc, #818cf8, #38bdf8, #c084fc);
+      background-size: 300% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradShift 5s linear infinite;
+      margin-right: 24px;
+      white-space: nowrap;
+    }
+
+    nav a {
+      color: var(--dim);
+      text-decoration: none;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 4px;
+      transition: color .2s, background .2s, text-shadow .2s;
+      letter-spacing: 1px;
+    }
+
+    nav a:hover {
+      color: var(--accent);
+      background: rgba(192, 132, 252, .08);
+      text-shadow: 0 0 10px rgba(192, 132, 252, .5);
+    }
+
+    .page {
+      max-width: 940px;
+      margin: 0 auto;
+      padding: 80px 24px 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+      padding: 60px 0 50px;
+      min-height: 500px;
+    }
+
+    @media (max-width: 700px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .hero-left {
+      text-align: left;
+    }
+
+    .hero-eyebrow {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--accent);
+      letter-spacing: 4px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      width: 30px;
+      height: 1px;
+      background: var(--accent);
+      opacity: .6;
+    }
+
+    .hero-title {
+      font-family: 'Orbitron', monospace;
+      font-weight: 900;
+      font-size: clamp(56px, 8vw, 88px);
+      letter-spacing: 8px;
+      line-height: .95;
+      background: linear-gradient(140deg, #e0c6ff 0%, #c084fc 40%, #818cf8 70%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      position: relative;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .hero-title::before,
+    .hero-title::after {
+      content: 'CABLE';
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: inherit;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-title::before {
+      animation: glitch1 6s infinite;
+      clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%);
+    }
+
+    .hero-title::after {
+      animation: glitch2 6s infinite;
+      clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%);
+    }
+
+    @keyframes glitch1 {
+
+      0%,
+      90%,
+      100% {
+        transform: none;
+        opacity: 0;
+      }
+
+      91% {
+        transform: translate(-4px, 0);
+        opacity: .6;
+        filter: hue-rotate(120deg);
+      }
+
+      93% {
+        transform: translate(4px, 0);
+        opacity: .4;
+      }
+    }
+
+    @keyframes glitch2 {
+
+      0%,
+      90%,
+      100% {
+        transform: none;
+        opacity: 0;
+      }
+
+      92% {
+        transform: translate(4px, 1px);
+        opacity: .5;
+        filter: hue-rotate(-120deg);
+      }
+
+      94% {
+        transform: translate(-4px, -1px);
+        opacity: .3;
+      }
+    }
+
+    .hero-sub {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--accent2);
+      letter-spacing: 3px;
+      margin-top: 14px;
+      margin-bottom: 18px;
+    }
+
+    .hero-desc {
+      color: var(--dim);
+      font-size: 14px;
+      line-height: 1.8;
+      margin-bottom: 24px;
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid;
+      letter-spacing: 1px;
+    }
+
+    .bp {
+      color: var(--accent);
+      border-color: rgba(192, 132, 252, .5);
+      background: rgba(192, 132, 252, .07);
+    }
+
+    .bb {
+      color: var(--accent2);
+      border-color: rgba(129, 140, 248, .5);
+      background: rgba(129, 140, 248, .07);
+    }
+
+    .bc {
+      color: var(--accent3);
+      border-color: rgba(56, 189, 248, .5);
+      background: rgba(56, 189, 248, .07);
+    }
+
+    .hero-right {
+      position: relative;
+    }
+
+    .hero-img-frame {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(192, 132, 252, .2);
+      box-shadow: 0 0 60px rgba(192, 132, 252, .2), 0 0 120px rgba(56, 189, 248, .08), inset 0 0 40px rgba(0, 0, 0, .4);
+    }
+
+    .hero-img-frame img {
+      display: block;
+      width: 100%;
+      height: 380px;
+      object-fit: cover;
+      object-position: center top;
+      filter: saturate(1.1) contrast(1.05) brightness(0.95);
+    }
+
+    .hero-img-frame::before,
+    .hero-img-frame::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      z-index: 2;
+      border-color: var(--accent);
+      border-style: solid;
+    }
+
+    .hero-img-frame::before {
+      top: 8px;
+      left: 8px;
+      border-width: 2px 0 0 2px;
+    }
+
+    .hero-img-frame::after {
+      bottom: 8px;
+      right: 8px;
+      border-width: 0 2px 2px 0;
+    }
+
+    .hero-img-frame .img-scan {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0, 0, 0, .08) 3px, rgba(0, 0, 0, .08) 4px);
+    }
+
+    .hero-img-frame .img-tag {
+      position: absolute;
+      bottom: 10px;
+      left: 12px;
+      z-index: 3;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      color: var(--accent);
+      letter-spacing: 2px;
+      opacity: .7;
+    }
+
+    .sep {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 48px 0 36px;
+    }
+
+    .sep::before,
+    .sep::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+    }
+
+    .sep span {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      color: var(--dim);
+      letter-spacing: 5px;
+      white-space: nowrap;
+    }
+
+    .section {
+      margin-bottom: 60px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 22px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sec-num {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #27086a, #0b1860);
+      border: 1px solid rgba(192, 132, 252, .35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Orbitron', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent);
+      box-shadow: 0 0 10px rgba(192, 132, 252, .15);
+    }
+
+    .section-header h2 {
+      font-family: 'Orbitron', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 3px;
+    }
+
+    .section>p {
+      color: var(--dim);
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 20px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .25s, transform .2s, box-shadow .25s;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--cg, transparent), transparent 70%);
+      opacity: 0;
+      transition: opacity .3s;
+      pointer-events: none;
+    }
+
+    .card:hover {
+      border-color: rgba(192, 132, 252, .5);
+      transform: translateY(-4px);
+      box-shadow: 0 10px 40px rgba(192, 132, 252, .14);
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    .card-icon {
+      font-size: 22px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .card h3 {
+      font-family: 'Orbitron', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--text);
+      letter-spacing: 2px;
+    }
+
+    .card p {
+      font-size: 13px;
+      color: var(--dim);
+      line-height: 1.6;
+    }
+
+    .card .tag {
+      display: inline-block;
+      margin-top: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(192, 132, 252, .08);
+      color: var(--accent);
+      border: 1px solid rgba(192, 132, 252, .25);
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .step {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .step:hover {
+      border-color: rgba(192, 132, 252, .4);
+      box-shadow: 0 0 20px rgba(192, 132, 252, .06);
+    }
+
+    .step-num {
+      width: 26px;
+      height: 26px;
+      min-width: 26px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, #27086a, #0e1350);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Orbitron', monospace;
+      font-weight: 700;
+      font-size: 9px;
+      color: var(--accent);
+      border: 1px solid rgba(192, 132, 252, .35);
+    }
+
+    .step-body h4 {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      margin-bottom: 4px;
+      color: var(--text);
+      letter-spacing: 2px;
+    }
+
+    .step-body p {
+      font-size: 13px;
+      color: var(--dim);
+    }
+
+    .step-body code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: rgba(192, 132, 252, .1);
+      padding: 1px 6px;
+      border-radius: 3px;
+      color: var(--accent);
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: 9px 13px;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    .data-table th {
+      background: rgba(39, 8, 106, .4);
+      color: var(--accent);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-table td {
+      border-bottom: 1px solid rgba(30, 13, 80, .6);
+      color: var(--dim);
+    }
+
+    .data-table td:first-child {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .data-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .data-table tr:hover td {
+      background: rgba(192, 132, 252, .03);
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: rgba(192, 132, 252, .1);
+      padding: 1px 6px;
+      border-radius: 3px;
+      color: var(--accent);
+    }
+
+    .panel {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin-top: 8px;
+    }
+
+    .callout {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      border-radius: 6px;
+      padding: 13px 16px;
+      margin: 14px 0;
+      border-left: 2px solid;
+    }
+
+    .callout.tip {
+      background: rgba(52, 211, 153, .05);
+      border-color: var(--good);
+    }
+
+    .callout.note {
+      background: rgba(56, 189, 248, .05);
+      border-color: var(--accent3);
+    }
+
+    .callout.warn {
+      background: rgba(251, 191, 36, .05);
+      border-color: var(--warn);
+    }
+
+    .callout .c-icon {
+      font-size: 15px;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .callout p {
+      font-size: 13px;
+      color: var(--dim);
+    }
+
+    .callout strong {
+      color: var(--text);
+    }
+
+    .ext-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 8px;
+    }
+
+    .ext-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid;
+      background: var(--bg3);
+    }
+
+    .cat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 10px;
+    }
+
+    .cat-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .cat-card:hover {
+      border-color: rgba(192, 132, 252, .4);
+      box-shadow: 0 0 16px rgba(192, 132, 252, .06);
+    }
+
+    .cat-card .cat-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .cat-card .cat-icon {
+      font-size: 19px;
+    }
+
+    .cat-card .cat-name {
+      font-family: 'Share Tech Mono', monospace;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
+
+    .cat-card .cat-folder {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--accent2);
+      background: rgba(129, 140, 248, .1);
+      padding: 2px 6px;
+      border-radius: 3px;
+      margin-left: auto;
+    }
+
+    .config-note {
+      margin-top: 18px;
+      padding: 14px 18px;
+      background: rgba(192, 132, 252, .05);
+      border: 1px solid rgba(192, 132, 252, .2);
+      border-radius: 8px;
+    }
+
+    .config-note h4 {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 2px;
+      margin-bottom: 7px;
+    }
+
+    .config-note p {
+      font-size: 13px;
+      color: var(--dim);
+    }
+
+    /* ── TERMINAL ── */
+    .term {
+      background: #020108;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      line-height: 2;
+      overflow-x: auto;
+      margin-top: 8px;
+    }
+
+    .t-dim {
+      color: #3d2f66;
+    }
+
+    .t-purple {
+      color: #c084fc;
+    }
+
+    .t-blue {
+      color: #818cf8;
+    }
+
+    .t-green {
+      color: #34d399;
+    }
+
+    .t-yellow {
+      color: #fbbf24;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      color: var(--dim);
+      position: relative;
+      z-index: 1;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      padding: 32px 0;
+      border-top: 1px solid var(--border);
+      letter-spacing: 2px;
+    }
+
+    footer span {
+      color: var(--accent);
+    }
+
+    @keyframes gradShift {
+      0% {
+        background-position: 0% center;
+      }
+
+      100% {
+        background-position: 300% center;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <canvas id="particles"></canvas>
+  <div class="gb a"></div>
+  <div class="gb b"></div>
+  <div class="gb c"></div>
+
+
+  <nav>
+    <span class="nav-logo">CABLE</span>
+    <a href="#quickstart">Start</a>
+    <a href="#modes">Modes</a>
+    <a href="#sorting">Sort</a>
+    <a href="#destination">Dest</a>
+    <a href="#categories">Categories</a>
+    <a href="#options">Options</a>
+    <a href="#watcher">Watcher</a>
+    <a href="#undo">Undo</a>
+    <a href="#config">Config</a>
+  </nav>
+
+  <div class="page">
+
+    <!-- ── HERO ── -->
+    <div class="hero">
+      <div class="hero-left">
+        <div class="hero-eyebrow">INTELLIGENT FOLDER ORGANIZER</div>
+        <div class="hero-title">CABLE</div>
+        <p class="hero-sub">// FILE SORTING SYSTEM v2.0 //</p>
+        <p class="hero-desc">Automatically sort any directory into neat, categorised subfolders — once or continuously
+          in the background.</p>
+        <div class="badge-row">
+          <span class="badge bp">v2.0</span>
+          <span class="badge bb">Python 3.10+</span>
+          <span class="badge bc">Windows · macOS · Linux</span>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="hero-img-frame">
+          <img src="lain_computer.png" alt="Lain at computer" />
+          <div class="img-scan"></div>
+          <span class="img-tag">// SYSTEM ACTIVE</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep"><span>■ ■ ■</span></div>
+
+    <!-- ── QUICK START ── -->
+    <div class="section" id="quickstart">
+      <div class="section-header">
+        <div class="sec-num">01</div>
+        <h2>QUICK START</h2>
+      </div>
+      <p>Get running in seconds with the included launcher scripts.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>INSTALL DEPENDENCIES</h4>
+            <p>Double-click <code>setup_requirements.bat</code> — installs <code>rich</code>, <code>watchdog</code>,
+              <code>pystray</code>, <code>Pillow</code>, <code>tomli</code> automatically.
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>LAUNCH CABLE</h4>
+            <p>Double-click <code>run.bat</code> or run <code>python cable.py</code> in a terminal. The interactive
+              wizard guides you through every choice.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>PICK A FOLDER</h4>
+            <p>A native folder-picker dialog appears. Select the directory to sort. Your last choices are remembered via
+              <code>~/.sortconfig.toml</code>.
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>ANSWER THE PROMPTS</h4>
+            <p>Choose <strong>operation mode</strong>, <strong>sort order</strong>, <strong>destination</strong>, and
+              optional settings. A live preview table shows every file before anything moves.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h4>CONFIRM &amp; SORT</h4>
+            <p>Press <code>Y</code>. A real-time progress bar processes each item. A summary table and bar-chart recap
+              tells you exactly what happened.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── OPERATION MODES ── -->
+    <div class="section" id="modes">
+      <div class="section-header">
+        <div class="sec-num">02</div>
+        <h2>OPERATION MODES</h2>
+      </div>
+      <p>On launch, Cable asks how you want to run.</p>
+      <div class="card-grid">
+        <div class="card" style="--cg: rgba(192,132,252,.05);">
+          <span class="card-icon">⚡</span>
+          <h3>ONE-TIME SORT</h3>
+          <p>Scans the chosen folder right now, shows a preview, then moves or copies files into subfolders. Exits when
+            finished.</p>
+          <span class="tag">Option 1</span>
+        </div>
+        <div class="card" style="--cg: rgba(56,189,248,.05);">
+          <span class="card-icon">👁️</span>
+          <h3>BACKGROUND WATCHER</h3>
+          <p>Stays alive as a system-tray icon. Every new file dropped in the watched folder is automatically sorted
+            within 2 seconds.</p>
+          <span class="tag">Option 2</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SORT ORDER ── -->
+    <div class="section" id="sorting">
+      <div class="section-header">
+        <div class="sec-num">03</div>
+        <h2>SORT ORDER</h2>
+      </div>
+      <p>Choose how files are ordered <em>within</em> each category subfolder.</p>
+      <div class="panel">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Label</th>
+              <th>Key</th>
+              <th>How it sorts</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Alphabetical</td>
+              <td><code>alpha</code></td>
+              <td>A → Z by filename (case-insensitive)</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Extension</td>
+              <td><code>ext</code></td>
+              <td>Group by extension, then A→Z within each group</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Size</td>
+              <td><code>size</code></td>
+              <td>Largest first, then A→Z for ties</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Date Modified</td>
+              <td><code>date</code></td>
+              <td>Newest first, then A→Z for ties</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>Combination</td>
+              <td><code>combo</code></td>
+              <td>Extension → largest → A→Z</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip">
+        <span class="c-icon">💡</span>
+        <p><strong>Tip:</strong> Your chosen sort order is saved to <code>~/.sortconfig.toml</code> and pre-selected
+          next time.</p>
+      </div>
+    </div>
+
+    <!-- ── DESTINATION ── -->
+    <div class="section" id="destination">
+      <div class="section-header">
+        <div class="sec-num">04</div>
+        <h2>DESTINATION</h2>
+      </div>
+      <p>Control <em>where</em> the sorted subfolders are created.</p>
+      <div class="card-grid">
+        <div class="card" style="--cg: rgba(192,132,252,.05);">
+          <span class="card-icon">📂</span>
+          <h3>HERE</h3>
+          <p>Subfolders are created <strong>inside</strong> the source directory you picked. Everything stays in one
+            place.</p>
+          <span class="tag">Option 1 · default</span>
+        </div>
+        <div class="card" style="--cg: rgba(56,189,248,.05);">
+          <span class="card-icon">🏠</span>
+          <h3>DEFAULTS</h3>
+          <p>Files are routed to OS libraries: <strong>Pictures</strong>, <strong>Videos</strong>,
+            <strong>Music</strong>, <strong>Documents</strong>, <strong>Downloads</strong>.
+          </p>
+          <span class="tag">Option 2</span>
+        </div>
+        <div class="card" style="--cg: rgba(52,211,153,.05);">
+          <span class="card-icon">🗂️</span>
+          <h3>WHERE</h3>
+          <p>Opens a folder-picker dialog so you can choose <strong>any</strong> custom destination. Category subfolders
+            are created inside it.</p>
+          <span class="tag">Option 3</span>
+        </div>
+      </div>
+      <div class="callout note" style="margin-top:14px;">
+        <span class="c-icon">ℹ️</span>
+        <p>Defaults mapping: Images → Pictures · Video → Videos · Sound → Music · Documents/Notepads/Code → Documents ·
+          everything else → Downloads.</p>
+      </div>
+    </div>
+
+    <!-- ── CATEGORIES ── -->
+    <div class="section" id="categories">
+      <div class="section-header">
+        <div class="sec-num">05</div>
+        <h2>FILE CATEGORIES</h2>
+      </div>
+      <p>Cable recognises 10 built-in categories plus a catch-all <strong>Misc</strong>. All categories are fully
+        customizable via <code>cable.json</code>.</p>
+      <div class="cat-grid">
+        <div class="cat-card">
+          <div class="cat-head"><span class="cat-icon">📁</span><span class="cat-name"
+              style="color:#fbbf24">Folders</span><span class="cat-folder">Folders/</span></div>
+          <div class="ext-cloud"><span class="ext-tag"
+              style="color:#fbbf24;border-color:rgba(251,191,36,.3)">directories</span></div>
+        </div>
+        <div class="cat-card">
+          <div class="cat-head"><span class="cat-icon">📑</span><span class="cat-name"
+              style="color:#93c5fd">Documents</span><span class="cat-folder">Documents/</span></div>
+          <div class="ext-cloud"><span class="ext-tag"
+              style="color:#93c5fd;border-color:rgba(147,197,253,.3)">.pdf</span><span class="ext-tag"
+              style="color:#93c5fd;border-color:rgba(147,197,253,.3)">.docx</span><span class="ext-tag"
+              style="color:#93c5fd;border-color:rgba(147,197,253,.3)">.xlsx</span><span class="ext-tag"
+              style="color:#93c5fd;border-color:rgba(147,197,253,.3)">.epub</span><span class="ext-tag"
+              style="color:#93c5fd;border-color:rgba(147,197,253,.3)">+more</span></div>
+        </div>
+        <div class="cat-card">
+          <div class="cat-head"><span class="cat-icon">🖼️</span><span class="cat-name"
+              style="color:#f0abfc">Images</span><span class="cat-folder">Media/Images/</span></div>
+          <div class="ext-cloud"><span class="ext-tag"
+              style="color:#f0abfc;border-color:rgba(240,171,252,.3)">.jpg</span><span class="ext-tag"
+              style="color:#f0abfc;border-color:rgba(240,171,252,.3)">.png</span><span class="ext-tag"
+              style="color:#f0abfc;border-color:rgba(240,171,252,.3)">.gif</span><span class="ext-tag"
+              style="color:#f0abfc;border-color:rgba(240,171,252,.3)">.webp</span><span class="ext-tag"
+              style="color:#f0abfc;border-color:rgba(240,171,252,.3)">.psd</span><span class="ext-tag"
+              style="color:#f0abfc;border-color:rgba(240,171,252,.3)">+more</span></div>
+        </div>
+        <div class="cat-card">
+          <div class="cat-head"><span class="cat-icon">🎬</span><span class="cat-name"
+              style="color:#fde68a">Video</span><span class="cat-folder">Media/Video/</span></div>
+          <div class="ext-cloud"><span class="ext-tag"
+              style="color:#fde68a;border-color:rgba(253,230,138,.3)">.mp4</span><span class="ext-tag"
+              style="color:#fde68a;border-color:rgba(253,230,138,.3)">.mkv</span><span class="ext-tag"
+              style="color:#fde68a;border-color:rgba(253,230,138,.3)">.mov</span><span class="ext-tag"
+              style="color:#fde68a;border-color:rgba(253,230,138,.3)">+more</span></div>
+        </div>
+        <div class="cat-card">
+          <div class="cat-head"><span class="cat-icon">🔊</span><span class="cat-name"
+              style="color:#a5b4fc">Sound</span><span class="cat-folder">Media/Sound/</span></div>
+          <div class="ext-cloud"><span class="ext-tag"
+              style="color:#a5b4fc;border-color:rgba(165,180,252,.3)">.mp3</span><span class="ext-tag"
+              style="color:#a5b4fc;border-color:rgba(165,180,252,.3)">.flac</span><span class="ext-tag"
+              style="color:#a5b4fc;border-color:rgba(165,180,252,.3)">.wav</span><span class="ext-tag"
+              style="color:#a5b4fc;border-color:rgba(165,180,252,.3)">+more</span></div>
+        </div>
+        <div class="cat-card">
+          <div class="cat-head"><span class="cat-icon">💻</span><span class="cat-name"
+              style="color:#6ee7b7">Code</span><span class="cat-folder">Code/</span></div>
+          <div class="ext-cloud"><span class="ext-tag"
+              style="color:#6ee7b7;border-color:rgba(110,231,183,.3)">.py</span><span class="ext-tag"
+              style="color:#6ee7b7;border-color:rgba(110,231,183,.3)">.js</span><span class="ext-tag"
+              style="color:#6ee7b7;border-color:rgba(110,231,183,.3)">.ts</span><span class="ext-tag"
+              style="color:#6ee7b7;border-color:rgba(110,231,183,.3)">.go</span><span class="ext-tag"
+              style="color:#6ee7b7;border-color:rgba(110,231,183,.3)">.rs</span><span class="ext-tag"
+              style="color:#6ee7b7;border-color:rgba(110,231,183,.3)">+more</span></div>
+        </div>
+        <div class="cat-card">
+          <div class="cat-head"><span class="cat-icon">🗜️</span><span class="cat-name"
+              style="color:#67e8f9">Archives</span><span class="cat-folder">Archives/</span></div>
+          <div class="ext-cloud"><span class="ext-tag"
+              style="color:#67e8f9;border-color:rgba(103,232,249,.3)">.zip</span><span class="ext-tag"
+              style="color:#67e8f9;border-color:rgba(103,232,249,.3)">.rar</span><span class="ext-tag"
+              style="color:#67e8f9;border-color:rgba(103,232,249,.3)">.7z</span><span class="ext-tag"
+              style="color:#67e8f9;border-color:rgba(103,232,249,.3)">.iso</span><span class="ext-tag"
+              style="color:#67e8f9;border-color:rgba(103,232,249,.3)">+more</span></div>
+        </div>
+        <div class="cat-card">
+          <div class="cat-head"><span class="cat-icon">⚙️</span><span class="cat-name"
+              style="color:#f87171">Executables</span><span class="cat-folder">Executables/</span></div>
+          <div class="ext-cloud"><span class="ext-tag"
+              style="color:#f87171;border-color:rgba(248,113,113,.3)">.exe</span><span class="ext-tag"
+              style="color:#f87171;border-color:rgba(248,113,113,.3)">.msi</span><span class="ext-tag"
+              style="color:#f87171;border-color:rgba(248,113,113,.3)">.bat</span><span class="ext-tag"
+              style="color:#f87171;border-color:rgba(248,113,113,.3)">.ps1</span><span class="ext-tag"
+              style="color:#f87171;border-color:rgba(248,113,113,.3)">+more</span></div>
+        </div>
+        <div class="cat-card">
+          <div class="cat-head"><span class="cat-icon">📄</span><span class="cat-name"
+              style="color:#e5e7eb">Notepads</span><span class="cat-folder">Notepads/</span></div>
+          <div class="ext-cloud"><span class="ext-tag"
+              style="color:#e5e7eb;border-color:rgba(229,231,235,.3)">.txt</span><span class="ext-tag"
+              style="color:#e5e7eb;border-color:rgba(229,231,235,.3)">.md</span><span class="ext-tag"
+              style="color:#e5e7eb;border-color:rgba(229,231,235,.3)">.log</span><span class="ext-tag"
+              style="color:#e5e7eb;border-color:rgba(229,231,235,.3)">.csv</span><span class="ext-tag"
+              style="color:#e5e7eb;border-color:rgba(229,231,235,.3)">+more</span></div>
+        </div>
+        <div class="cat-card">
+          <div class="cat-head"><span class="cat-icon">🔗</span><span class="cat-name"
+              style="color:#a5f3fc">Shortcuts</span><span class="cat-folder">Shortcuts/</span></div>
+          <div class="ext-cloud"><span class="ext-tag"
+              style="color:#a5f3fc;border-color:rgba(165,243,252,.3)">.lnk</span><span class="ext-tag"
+              style="color:#a5f3fc;border-color:rgba(165,243,252,.3)">.url</span><span class="ext-tag"
+              style="color:#a5f3fc;border-color:rgba(165,243,252,.3)">.webloc</span></div>
+        </div>
+        <div class="cat-card">
+          <div class="cat-head"><span class="cat-icon">❓</span><span class="cat-name"
+              style="color:#9ca3af">Misc</span><span class="cat-folder">Miscellaneous/</span></div>
+          <div class="ext-cloud"><span class="ext-tag" style="color:#9ca3af;border-color:rgba(156,163,175,.3)">any
+              unknown type</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── OPTIONS ── -->
+    <div class="section" id="options">
+      <div class="section-header">
+        <div class="sec-num">06</div>
+        <h2>OPTIONS</h2>
+      </div>
+      <p>After picking sort order and destination, Cable shows an Options step.</p>
+      <div class="panel">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Option</th>
+              <th>What it does</th>
+              <th>Default</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Copy instead of move</td>
+              <td>Duplicates files into subfolders; originals stay untouched. Undo unavailable in copy mode.</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Date subfolders for media</td>
+              <td>Organises Images, Video and Sound into <code>YYYY/MM</code> sub-subfolders by last-modified date.</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Exclude patterns</td>
+              <td>Glob patterns (comma-separated). Matching files are skipped. Built-ins: <code>desktop.ini</code>,
+                <code>*.tmp</code>, <code>Thumbs.db</code>.
+              </td>
+              <td>See built-ins</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn" style="margin-top:14px;">
+        <span class="c-icon">⚠️</span>
+        <p><strong>Copy mode note:</strong> Undo log is only written when <em>moving</em> files, not copying.</p>
+      </div>
+    </div>
+
+    <!-- ── WATCHER ── -->
+    <div class="section" id="watcher">
+      <div class="section-header">
+        <div class="sec-num">07</div>
+        <h2>BACKGROUND WATCHER</h2>
+      </div>
+      <p>Cable minimises to your system tray and watches for new files in real time.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">▶</div>
+          <div class="step-body">
+            <h4>TWO-SECOND DEBOUNCE</h4>
+            <p>Files are processed <strong>2 seconds</strong> after the last filesystem event — prevents half-written
+              files from being sorted early.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">🔔</div>
+          <div class="step-body">
+            <h4>SYSTEM TRAY ICON</h4>
+            <p>A purple folder icon in your tray. Tooltip shows the watched folder name and running count of files
+              sorted this session.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">📋</div>
+          <div class="step-body">
+            <h4>TRAY MENU</h4>
+            <p>Right-click for <strong>Open Log</strong> (opens <code>~/.sort_watcher.log</code>) and <strong>Stop
+                Watcher</strong>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">📝</div>
+          <div class="step-body">
+            <h4>ACTIVITY LOG</h4>
+            <p>Every move/copy is timestamped: <code>2025-06-01 14:32:10  [MOVE] photo.jpg → Media/Images/</code></p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">⚡</div>
+          <div class="step-body">
+            <h4>LIVE SETTINGS RELOAD</h4>
+            <p>The watcher reloads <code>~/.sortconfig.toml</code> before each file — change settings without
+              restarting.</p>
+          </div>
+        </div>
+      </div>
+      <div class="callout tip" style="margin-top:14px;">
+        <span class="c-icon">💡</span>
+        <p><strong>Permission errors</strong> are handled gracefully — locked files are rescheduled and retried
+          automatically.</p>
+      </div>
+    </div>
+
+    <!-- ── UNDO ── -->
+    <div class="section" id="undo">
+      <div class="section-header">
+        <div class="sec-num">08</div>
+        <h2>UNDO / RESTORE</h2>
+      </div>
+      <p>After a <em>move</em>-based One-Time Sort, Cable writes a <code>sort_log.json</code> in the sorted folder so
+        you can fully reverse the operation.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>RUN CABLE AGAIN ON THE SAME FOLDER</h4>
+            <p>Cable detects <code>sort_log.json</code> and asks if you want to undo.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>CONFIRM RESTORE</h4>
+            <p>All files are moved back to their original locations in reverse order. Empty subfolders are left behind.
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>LOG IS DELETED</h4>
+            <p>Once restore completes, <code>sort_log.json</code> is removed so the operation cannot be undone twice.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="callout note" style="margin-top:14px;">
+        <span class="c-icon">ℹ️</span>
+        <p>Undo is only available for <strong>move</strong> operations, not copy operations.</p>
+      </div>
+    </div>
+
+    <!-- ── DUPLICATE DETECTION ── -->
+    <div class="section" id="duplicates">
+      <div class="section-header">
+        <div class="sec-num">09</div>
+        <h2>DUPLICATE DETECTION</h2>
+      </div>
+      <p>Built-in protection against accidental data loss from file name collisions.</p>
+      <div class="panel">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Scenario</th>
+              <th>What Cable does</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Same name, same content</td>
+              <td>Source file is <strong>skipped</strong>. Counter shown in final summary.</td>
+            </tr>
+            <tr>
+              <td>Same name, different content</td>
+              <td>Destination renamed to <code>filename (1).ext</code>, <code>filename (2).ext</code>, etc. Both files
+                are kept.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:12px;color:var(--dim);font-size:13px;">Hash comparison uses <strong>SHA-256</strong> computed
+        in 64 KB chunks for speed on large files.</p>
+    </div>
+
+    <!-- ── CONFIG ── -->
+    <div class="section" id="config">
+      <div class="section-header">
+        <div class="sec-num">10</div>
+        <h2>CONFIGURATION</h2>
+      </div>
+      <p>Cable uses two config files: <code>cable.json</code> (structure &amp; defaults) and
+        <code>~/.sortconfig.toml</code> (session state).
+      </p>
+
+      <div class="config-note">
+        <h4>// cable.json — FULL CUSTOMIZATION</h4>
+        <p>Lives next to <code>cable.py</code>. Auto-created on first run. Edit freely to change category names,
+          subfolder paths, icons, colors, which extensions go where, OS default paths, date-media categories, and
+          session defaults. Add entirely new categories by appending entries to the <code>categories</code> array.</p>
+      </div>
+
+      <div class="term" style="margin-top:14px;">
+        <span class="t-dim">// cable.json — add a custom category</span><br />
+        <span class="t-purple">"categories"</span><span class="t-dim">: [{ </span>
+        <span class="t-purple">"key"</span><span class="t-dim">:</span> <span class="t-green">"🎮 Games"</span><span
+          class="t-dim">,</span>
+        <span class="t-purple">"folder"</span><span class="t-dim">:</span> <span class="t-green">"Games"</span><span
+          class="t-dim">,</span><br />
+        &nbsp;&nbsp;<span class="t-purple">"icon"</span><span class="t-dim">:</span> <span
+          class="t-green">"🎮"</span><span class="t-dim">,</span>
+        <span class="t-purple">"color"</span><span class="t-dim">:</span> <span class="t-green">"#a78bfa"</span><span
+          class="t-dim">,</span>
+        <span class="t-purple">"extensions"</span><span class="t-dim">:</span> [<span class="t-green">".rom"</span>,
+        <span class="t-green">".nds"</span>] <span class="t-dim">}]</span>
+      </div>
+
+      <div class="term" style="margin-top:10px;">
+        <span class="t-dim"># ~/.sortconfig.toml — session state (auto-saved after each run)</span><br />
+        <span class="t-purple">run_mode</span> <span class="t-dim">=</span> <span class="t-green">"1"</span> <span
+          class="t-dim"># 1 = Once, 2 = Watcher</span><br />
+        <span class="t-purple">sort_mode</span> <span class="t-dim">=</span> <span class="t-green">"alpha"</span> <span
+          class="t-dim"># alpha | ext | size | date | combo</span><br />
+        <span class="t-purple">copy_mode</span> <span class="t-dim">=</span> <span class="t-yellow">false</span> <span
+          class="t-dim"># true = copy, false = move</span><br />
+        <span class="t-purple">date_subfolders</span> <span class="t-dim">=</span> <span class="t-yellow">false</span>
+        <span class="t-dim"># YYYY/MM sub-subfolders for media</span><br />
+        <span class="t-purple">dest_mode</span> <span class="t-dim">=</span> <span class="t-green">"here"</span> <span
+          class="t-dim"># here | defaults | where</span><br />
+        <span class="t-purple">exclude_patterns</span> <span class="t-dim">=</span> [<span
+          class="t-green">"desktop.ini"</span><span class="t-dim">,</span> <span class="t-green">"*.tmp"</span><span
+          class="t-dim">,</span> <span class="t-green">"Thumbs.db"</span>]
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <p>CABLE &nbsp;·&nbsp; <span>v2.0</span> &nbsp;·&nbsp; By 0.6 :3</p>
+    <p style="margin-top:4px;opacity:.5;">Python · rich · watchdog · pystray · Pillow</p>
+  </footer>
+
+  <script>
+    const canvas = document.getElementById('particles');
+    const ctx = canvas.getContext('2d');
+    let W, H;
+    function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+    resize(); window.addEventListener('resize', resize);
+
+    const COLS = ['rgba(192,132,252,', 'rgba(129,140,248,', 'rgba(56,189,248,', 'rgba(167,139,250,'];
+    const pts = Array.from({ length: 70 }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 1.3 + 0.2,
+      dx: (Math.random() - .5) * .25,
+      dy: (Math.random() - .5) * .25,
+      col: COLS[Math.floor(Math.random() * COLS.length)],
+      a: Math.random() * .45 + .08,
+    }));
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      for (const p of pts) {
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.col + p.a + ')'; ctx.fill();
+        p.x += p.dx; p.y += p.dy;
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+        if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      }
+      requestAnimationFrame(draw);
+    }
+    draw();
+  </script>
+</body>
+
+</html>
