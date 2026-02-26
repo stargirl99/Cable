@@ -1,5 +1,5 @@
 @echo off
-title Installing Folder Sorter Requirements...
+title Installing Cable Requirements...
 echo.
 echo  --------------------------------------------------
 echo   Installing needed libraries for Cable...
@@ -14,4 +14,5 @@ echo   Finished! You can now run the script.
 echo  --------------------------------------------------
 echo.
 pause
+
 
