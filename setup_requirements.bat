@@ -2,7 +2,7 @@
 title Installing Folder Sorter Requirements...
 echo.
 echo  --------------------------------------------------
-echo   Installing needed libraries for Folder Sorter...
+echo   Installing needed libraries for Cable...
 echo  --------------------------------------------------
 echo.
 
@@ -14,3 +14,4 @@ echo   Finished! You can now run the script.
 echo  --------------------------------------------------
 echo.
 pause
+
